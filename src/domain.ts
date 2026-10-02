@@ -7,8 +7,10 @@ import type {
   ExpoElement,
   FieldSize,
   LayoutDocument,
+  LayoutScheme,
   PathPreview,
   OverlapIssue,
+  SchemeSortKey,
 } from './types';
 
 export const MIN_CHANNEL = 1.2;
@@ -32,6 +34,35 @@ export const createStarterDocument = (): LayoutDocument => ({
     { id: 'seating-1', kind: 'seating', name: '休息座席', x: 10, y: 11, width: 6, height: 3, rotation: 0 },
   ],
 });
+
+export const createSchemeId = (): string => `scheme-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+export const cloneDocument = (document: LayoutDocument): LayoutDocument => JSON.parse(JSON.stringify(document)) as LayoutDocument;
+
+export const createBlankDocument = (): LayoutDocument => ({ version: 1, title: '', field: { width: 28, height: 18 }, elements: [] });
+
+export const createBlankScheme = (now = Date.now()): LayoutScheme => {
+  const document = createBlankDocument();
+  return { id: createSchemeId(), name: '未命名方案', document, createdAt: now, updatedAt: now };
+};
+
+export const createSchemeFromDocument = (document: LayoutDocument, name: string, now = Date.now()): LayoutScheme => ({
+  id: createSchemeId(),
+  name,
+  document: cloneDocument(document),
+  createdAt: now,
+  updatedAt: now,
+});
+
+export const sortSchemes = (schemes: LayoutScheme[], key: SchemeSortKey): LayoutScheme[] => {
+  const copy = [...schemes];
+  if (key === 'name') {
+    return copy.sort((first, second) => first.name.localeCompare(second.name, 'zh-Hans-CN'));
+  }
+  return copy.sort((first, second) => second.updatedAt - first.updatedAt);
+};
+
+export const formatTimestamp = (timestamp: number): string => new Date(timestamp).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 export const createElement = (kind: ElementKind, index: number, field: FieldSize): ExpoElement => {
   const spec = ELEMENT_SPECS[kind];

@@ -1,6 +1,8 @@
 export type ElementKind = 'booth' | 'stage' | 'seating' | 'entrance';
 export type LayoutMode = 'edit' | 'inspect' | 'path';
 export type ViewPhase = 'loading' | 'ready' | 'error';
+export type AppScreen = 'library' | 'editor';
+export type SchemeSortKey = 'updatedAt' | 'name';
 
 export interface ExpoElement {
   id: string;
@@ -29,6 +31,30 @@ export interface LayoutDocument {
   title: string;
   field: FieldSize;
   elements: ExpoElement[];
+}
+
+export interface LayoutScheme {
+  id: string;
+  name: string;
+  document: LayoutDocument;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface SchemeLibrary {
+  version: 1;
+  schemes: LayoutScheme[];
+}
+
+export interface SchemeSummary {
+  id: string;
+  name: string;
+  elementCount: number;
+  fieldLabel: string;
+  createdAt: number;
+  updatedAt: number;
+  isActive: boolean;
+  isDirty: boolean;
 }
 
 export interface ElementSpec {
