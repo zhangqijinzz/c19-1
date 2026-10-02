@@ -1,6 +1,14 @@
 export type ElementKind = 'booth' | 'stage' | 'seating' | 'entrance';
 export type LayoutMode = 'edit' | 'inspect' | 'path';
 export type ViewPhase = 'loading' | 'ready' | 'error';
+export type ViewScreen = 'library' | 'editor';
+export type PlanSort = 'updated' | 'name';
+
+export interface PendingSwitch {
+  type: 'open' | 'create';
+  planId?: string;
+  createMode?: 'blank' | 'example';
+}
 
 export interface ExpoElement {
   id: string;
@@ -29,6 +37,14 @@ export interface LayoutDocument {
   title: string;
   field: FieldSize;
   elements: ExpoElement[];
+}
+
+export interface LayoutPlan {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  document: LayoutDocument;
 }
 
 export interface ElementSpec {

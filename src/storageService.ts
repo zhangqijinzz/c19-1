@@ -1,36 +1,48 @@
-import type { LayoutDocument } from './types';
+export const LEGACY_DOCUMENT_KEY = 'exposketch.document.v1';
+export const PLAN_LIBRARY_KEY = 'exposketch.plans.v1';
 
-export interface DocumentStorageService {
-  read(): Promise<LayoutDocument | null>;
-  write(document: LayoutDocument): Promise<void>;
+export interface JsonStorageService {
+  readJson<T>(key: string): Promise<T | null>;
+  writeJson(key: string, value: unknown): Promise<void>;
+  remove(key: string): Promise<void>;
 }
-
-const STORAGE_KEY = 'exposketch.document.v1';
 
 const canUseIndexedDb = () => typeof indexedDB !== 'undefined';
 
-export class BrowserStorageService implements DocumentStorageService {
-  async read(): Promise<LayoutDocument | null> {
+export class BrowserStorageService implements JsonStorageService {
+  async readJson<T>(key: string): Promise<T | null> {
     if (!canUseIndexedDb()) {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as LayoutDocument) : null;
+      const raw = window.localStorage.getItem(key);
+      return raw ? (JSON.parse(raw) as T) : null;
     }
-    return this.withDatabase((store) => new Promise<LayoutDocument | null>((resolve, reject) => {
-      const request = store.get(STORAGE_KEY);
-      request.onsuccess = () => resolve((request.result as LayoutDocument | undefined) ?? null);
-      request.onerror = () => reject(request.error ?? new Error('读取布局失败'));
+    return this.withDatabase((store) => new Promise<T | null>((resolve, reject) => {
+      const request = store.get(key);
+      request.onsuccess = () => resolve((request.result as T | undefined) ?? null);
+      request.onerror = () => reject(request.error ?? new Error('读取数据失败'));
     }));
   }
 
-  async write(document: LayoutDocument): Promise<void> {
+  async writeJson(key: string, value: unknown): Promise<void> {
     if (!canUseIndexedDb()) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(document));
+      window.localStorage.setItem(key, JSON.stringify(value));
       return;
     }
     await this.withDatabase((store) => new Promise<void>((resolve, reject) => {
-      const request = store.put(document, STORAGE_KEY);
+      const request = store.put(value, key);
       request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error ?? new Error('保存布局失败'));
+      request.onerror = () => reject(request.error ?? new Error('保存数据失败'));
+    }));
+  }
+
+  async remove(key: string): Promise<void> {
+    if (!canUseIndexedDb()) {
+      window.localStorage.removeItem(key);
+      return;
+    }
+    await this.withDatabase((store) => new Promise<void>((resolve, reject) => {
+      const request = store.delete(key);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error ?? new Error('删除数据失败'));
     }));
   }
 

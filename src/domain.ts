@@ -33,6 +33,25 @@ export const createStarterDocument = (): LayoutDocument => ({
   ],
 });
 
+export const createBlankDocument = (): LayoutDocument => ({
+  version: 1,
+  title: '',
+  field: { width: 28, height: 18 },
+  elements: [],
+});
+
+export const createUniqueName = (base: string, existing: string[]): string => {
+  const taken = new Set(existing);
+  if (!taken.has(base)) return base;
+  for (let index = 2; ; index += 1) {
+    const candidate = `${base} ${index}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+};
+
+export const cloneDocument = (document: LayoutDocument): LayoutDocument =>
+  ({ ...document, field: { ...document.field }, elements: document.elements.map((element) => ({ ...element })) });
+
 export const createElement = (kind: ElementKind, index: number, field: FieldSize): ExpoElement => {
   const spec = ELEMENT_SPECS[kind];
   const offset = Math.min(index * 0.65, 4);

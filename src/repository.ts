@@ -1,10 +1,10 @@
-import { createStarterDocument } from './domain';
-import type { DocumentStorageService } from './storageService';
-import type { ExpoElement, LayoutDocument } from './types';
+import { LEGACY_DOCUMENT_KEY, PLAN_LIBRARY_KEY } from './storageService';
+import type { JsonStorageService } from './storageService';
+import type { ExpoElement, LayoutDocument, LayoutPlan } from './types';
 
-export interface LayoutRepository {
-  load(): Promise<LayoutDocument>;
-  save(document: LayoutDocument): Promise<void>;
+export interface PlanLibraryRepository {
+  loadLibrary(): Promise<LayoutPlan[]>;
+  saveLibrary(plans: LayoutPlan[]): Promise<void>;
 }
 
 const isElement = (value: unknown): value is ExpoElement => {
@@ -20,19 +20,50 @@ const isDocument = (value: unknown): value is LayoutDocument => {
   return document.version === 1 && typeof document.title === 'string' && !!field && typeof field.width === 'number' && typeof field.height === 'number' && Array.isArray(document.elements) && document.elements.every(isElement);
 };
 
-export class LocalLayoutRepository implements LayoutRepository {
-  constructor(private readonly storage: DocumentStorageService) {}
+const isPlan = (value: unknown): value is LayoutPlan => {
+  if (!value || typeof value !== 'object') return false;
+  const plan = value as Record<string, unknown>;
+  return typeof plan.id === 'string' && typeof plan.name === 'string' && typeof plan.createdAt === 'number' && typeof plan.updatedAt === 'number' && isDocument(plan.document);
+};
 
-  async load(): Promise<LayoutDocument> {
-    try {
-      const saved = await this.storage.read();
-      return isDocument(saved) ? saved : createStarterDocument();
-    } catch {
-      return createStarterDocument();
+export const LEGACY_PLAN_ID = 'legacy-layout';
+
+export class LocalPlanLibraryRepository implements PlanLibraryRepository {
+  constructor(private readonly storage: JsonStorageService) {}
+
+  async loadLibrary(): Promise<LayoutPlan[]> {
+    const stored = await this.storage.readJson<unknown>(PLAN_LIBRARY_KEY).catch(() => null);
+    if (Array.isArray(stored)) return stored.filter(isPlan);
+
+    const migrated = await this.migrateLegacyDocument();
+    if (migrated) {
+      await this.storage.writeJson(PLAN_LIBRARY_KEY, [migrated]);
+      await this.storage.remove(LEGACY_DOCUMENT_KEY).catch(() => {});
+      return [migrated];
     }
+
+    return [];
   }
 
-  async save(document: LayoutDocument): Promise<void> {
-    await this.storage.write(document);
+  async saveLibrary(plans: LayoutPlan[]): Promise<void> {
+    await this.storage.writeJson(PLAN_LIBRARY_KEY, plans);
+  }
+
+  private async migrateLegacyDocument(): Promise<LayoutPlan | null> {
+    try {
+      const legacy = await this.storage.readJson<unknown>(LEGACY_DOCUMENT_KEY);
+      if (!isDocument(legacy)) return null;
+      const timestamp = Date.now();
+      const name = legacy.title.trim() || '本地布局';
+      return {
+        id: LEGACY_PLAN_ID,
+        name,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        document: { ...legacy, title: name },
+      };
+    } catch {
+      return null;
+    }
   }
 }
